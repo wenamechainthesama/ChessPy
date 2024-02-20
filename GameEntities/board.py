@@ -6,16 +6,8 @@ ROWS_AMOUNT = 8
 WHITE = (204, 166, 133)
 BLACK = (145, 118, 89)
 
-def get_square_index_by_coords(pos):
-    return pos[1] // 100 * ROWS_AMOUNT + pos[0] // 100
-
 class Board:
     def __init__(self):
-        """
-        FEN is a standard notation for describing a particular board position of a chess game
-        More: https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation
-        """
-        self.initial_position_fen = "RNBKQBNR/PPPPPPPP/8/8/8/8/pppppppp/rnbkqbnr w KQkq - 0 1"
         self.squares = []
         self.piece_mark_accordance = {
             "r": PieceType.rook,
@@ -34,12 +26,9 @@ class Board:
                 square_color = WHITE if (row + column) % 2 == 0 else BLACK
                 self.squares.append(Square((column * 100, row * 100), square_color))
 
-    def setup_initial_position(self, screen):
-        self.initial_position_fen = self.initial_position_fen.replace("/", "")
+    def setup_position(self, screen, fen):
         square_index = 0
-        for index, letter in enumerate(self.initial_position_fen):
-            if self.initial_position_fen[index] == ' ':
-                break
+        for letter in fen:
             if letter.isdigit():
                 square_index += int(letter)
                 continue
@@ -47,23 +36,63 @@ class Board:
             piece_type = self.piece_mark_accordance[letter.lower()]
             piece_color = PieceColor.black if letter.isupper() else PieceColor.white
             piece = Piece(piece_type, piece_color)
-            piece.draw(screen, current_square.center)
-            current_square.occupying_piece = piece
-            square_index += 1
+            if not piece.chosen:
+                piece.draw(screen, current_square.center)
+                current_square.occupying_piece = piece
+                square_index += 1
 
     def choose_piece(self, screen, mouse_pos, init_square_index):
-        square_index = init_square_index
-        square = self.squares[square_index]
+        square = self.squares[init_square_index]
         if square.occupying_piece is not None:
-            print("piece selected")
             """ Hold piece by cursor until dropped """
             piece = square.occupying_piece
+            piece.chosen = True
             piece.draw(screen, (mouse_pos[0] - 50, mouse_pos[1] - 50))
 
-    def draw(self, screen):
+    def make_move(self, init_square_index, target_square_index):
+        init_square = self.squares[init_square_index]
+        target_square = self.squares[target_square_index]
+        init_square.occupying_piece.chosen = False
+        target_square.occupying_piece = init_square.occupying_piece
+        init_square.occupying_piece = None
+
+    def drop_piece_back(self, init_square_index):
+        self.squares[init_square_index].occupying_piece.chosen = False
+
+    def generate_fen(self):
+        """
+        FEN is a standard notation for describing a particular board position of a chess game
+        More: https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation
+        """
+        fen = ""
+        empty_square_counter = 0
+        for square in self.squares:
+            if empty_square_counter == ROWS_AMOUNT:
+                empty_square_counter = 0
+                fen += str(ROWS_AMOUNT)
+            related_piece = square.occupying_piece
+            if related_piece is not None and not related_piece.chosen:
+                if empty_square_counter:
+                    fen += str(empty_square_counter)
+                    empty_square_counter = 0
+                piece_type = related_piece.type
+                piece_color = related_piece.color
+                letter = list(self.piece_mark_accordance.keys())[list(self.piece_mark_accordance.values()).index(piece_type)]
+                if piece_color:
+                    letter = letter.upper()
+                fen += letter
+            else:
+                empty_square_counter += 1
+
+        return fen
+
+    def get_square_by_index(self, square_index):
+        return self.squares[square_index]
+
+    def draw(self, screen, fen):
         """ At first draw squares """
         for square in self.squares:
             square.draw(screen)
 
         """ And only then pieces """
-        self.setup_initial_position(screen)
+        self.setup_position(screen, fen)
