@@ -11,8 +11,6 @@ class Piece(sprite.Sprite):
         self.image = image.load(f"{ASSETS_PATH}\\{self.color}{self.type}.png").convert_alpha()
         self.image = transform.scale(self.image, (100, 100))
         self.chosen = False
-        # self.location = None
 
     def draw(self, screen, pos):
         screen.blit(self.image, pos)
-        # self.location = square

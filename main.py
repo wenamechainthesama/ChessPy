@@ -1,13 +1,14 @@
 import pygame
 from sys import exit
-from GameEntities.enums import PieceType
 from GameEntities.board import Board
-from GameEntities.pseudoLegalMoveGenerator import PseudoLegalMoveGenerator
+from GameEntities.movesGeneration import save_precomputed_move_data
 
 # Define constants
 FPS = 60
 BOARD_SIZE = 800
 ROWS_AMOUNT = 8
+WHITE = (204, 166, 133)
+BLACK = (145, 118, 89)
 
 def get_square_index_by_coords(pos):
     return pos[1] // 100 * ROWS_AMOUNT + pos[0] // 100
@@ -18,17 +19,22 @@ def main():
     screen = pygame.display.set_mode((BOARD_SIZE, BOARD_SIZE))
     pygame.display.set_caption("Chess")
     clock = pygame.time.Clock()
+    save_precomputed_move_data()
 
-    initial_position_fen = "RNBKQBNRPPPPPPPP8888pppppppprnbkqbnr"
+    initial_position_fen = "PRNKQ888888prnbkq"
     board = Board()
     board.draw(screen, initial_position_fen)
 
     is_piece_being_held = False
     init_square_index = None
+    legal_square_indexes = None
     while True:
         clock.tick(FPS)
+        """ Lock mouse inside the screen """
+        pygame.event.set_grab(True)
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
+            """ To interrupt the game hit escape """
+            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
                 pygame.quit()
                 exit()
 
@@ -38,28 +44,27 @@ def main():
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     is_piece_being_held = True
                     init_square_index = clicked_square_index
+                    legal_square_indexes = board.highlight_legal_moves(screen, init_square_index)
             if event.type == pygame.MOUSEBUTTONUP and is_piece_being_held:
-                # calculation_function_type_of_piece_based = {
-                #     PieceType.queen or PieceType.rook or PieceType.bishop: PseudoLegalMoveGenerator.calculate_sliding_moves,
-                #     PieceType.knight: PseudoLegalMoveGenerator.calculate_knight_moves,
-                #     PieceType.pawn: PseudoLegalMoveGenerator.calculate_pawn_moves,
-                #     PieceType.king: PseudoLegalMoveGenerator.calculate_king_moves,
-                # }
-                # is_piece_being_held = False
-                current_square_index = clicked_square_index
-                # calculation_function = calculation_function_type_of_piece_based[pieceType]
-                # is_move_legal = calculation_function(init_square_index)
-                is_move_legal = True
-                if is_move_legal:
-                    board.make_move(init_square_index, current_square_index)
-                    fen = board.generate_fen()
-                    board.draw(screen, fen)
+                is_piece_being_held = False
+                if board.squares[clicked_square_index].color == (73, 52, 227):
+                    board.make_move(screen, init_square_index, clicked_square_index)
                 else:
                     board.drop_piece_back(init_square_index)
                     board.draw(screen, board.generate_fen())
+                legal_square_indexes.append(init_square_index)
+                for square_index in legal_square_indexes:
+                    square = board.get_square_by_index(square_index)
+                    square.color = WHITE if (square_index // ROWS_AMOUNT + square_index % ROWS_AMOUNT) % 2 == 0 else BLACK
+                legal_square_indexes = None
+                board.draw(screen, board.generate_fen())
 
         if is_piece_being_held:
             board.draw(screen, board.generate_fen())
+            square = board.get_square_by_index(init_square_index)
+            shadow_image = square.occupying_piece.image.copy()
+            shadow_image.set_alpha(128)
+            screen.blit(shadow_image, square.center)
             board.choose_piece(screen, pygame.mouse.get_pos(), init_square_index)
 
         pygame.display.flip()

@@ -1,8 +1,10 @@
 from GameEntities.piece import Piece
 from GameEntities.square import Square
 from GameEntities.enums import PieceType, PieceColor
+from GameEntities.movesGeneration import *
 
 ROWS_AMOUNT = 8
+BOARD_SIZE = 800
 WHITE = (204, 166, 133)
 BLACK = (145, 118, 89)
 
@@ -36,10 +38,9 @@ class Board:
             piece_type = self.piece_mark_accordance[letter.lower()]
             piece_color = PieceColor.black if letter.isupper() else PieceColor.white
             piece = Piece(piece_type, piece_color)
-            if not piece.chosen:
-                piece.draw(screen, current_square.center)
-                current_square.occupying_piece = piece
-                square_index += 1
+            piece.draw(screen, current_square.center)
+            current_square.occupying_piece = piece
+            square_index += 1
 
     def choose_piece(self, screen, mouse_pos, init_square_index):
         square = self.squares[init_square_index]
@@ -47,14 +48,36 @@ class Board:
             """ Hold piece by cursor until dropped """
             piece = square.occupying_piece
             piece.chosen = True
-            piece.draw(screen, (mouse_pos[0] - 50, mouse_pos[1] - 50))
+            new_piece_coords = (mouse_pos[0] - 50, mouse_pos[1] - 50)
+            piece.draw(screen, new_piece_coords)
 
-    def make_move(self, init_square_index, target_square_index):
+    def make_move(self, screen, init_square_index, target_square_index):
         init_square = self.squares[init_square_index]
         target_square = self.squares[target_square_index]
         init_square.occupying_piece.chosen = False
         target_square.occupying_piece = init_square.occupying_piece
         init_square.occupying_piece = None
+        fen = self.generate_fen()
+        self.draw(screen, fen)
+
+    def highlight_legal_moves(self, screen, init_square_index):
+        calculation_function_type_of_piece_based = {
+            PieceType.queen: calculate_sliding_moves,
+            PieceType.rook: calculate_sliding_moves,
+            PieceType.bishop: calculate_sliding_moves,
+            PieceType.knight: calculate_knight_moves,
+            PieceType.pawn: calculate_pawn_moves,
+            PieceType.king: calculate_king_moves,
+        }
+        square = self.get_square_by_index(init_square_index)
+        pieceType = square.occupying_piece.type
+        calculation_function = calculation_function_type_of_piece_based[pieceType]
+        legal_square_indexes = calculation_function(init_square_index, self.squares)
+        for square_index in legal_square_indexes:
+            self.get_square_by_index(square_index).color = (73, 52, 227)
+        self.get_square_by_index(init_square_index).color = (74, 52, 227)
+
+        return legal_square_indexes
 
     def drop_piece_back(self, init_square_index):
         self.squares[init_square_index].occupying_piece.chosen = False
