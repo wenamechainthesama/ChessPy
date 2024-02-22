@@ -3,6 +3,14 @@ from sys import exit
 from GameEntities.board import Board
 from GameEntities.movesGeneration import save_precomputed_move_data
 
+"""
+TODO:
+use gitattributes
+remove venv from github
+implement rules for knight and pawn
+"""
+
+
 # Define constants
 FPS = 60
 BOARD_SIZE = 800
