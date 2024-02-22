@@ -5,11 +5,15 @@ from GameEntities.movesGeneration import save_precomputed_move_data
 
 """
 TODO:
-use gitattributes
-remove venv from github
-implement rules for knight and pawn
-"""
+1) en passant
+2) make queen (and other pieces) from pawn
+3) follow move order
 
+LATER:
+concept of check, mate, and stalemate
+castling
+sound effects
+"""
 
 # Define constants
 FPS = 60
@@ -29,10 +33,12 @@ def main():
     clock = pygame.time.Clock()
     save_precomputed_move_data()
 
-    initial_position_fen = "PRNKQ888888prnbkq"
+    initial_position_fen = "RNBQKBNRPPPPPPPP8888pppppppprnbqkbnr"
     board = Board()
     board.draw(screen, initial_position_fen)
 
+    pawn_move = None
+    en_passant_square_index = None
     is_piece_being_held = False
     init_square_index = None
     legal_square_indexes = None
@@ -52,11 +58,13 @@ def main():
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     is_piece_being_held = True
                     init_square_index = clicked_square_index
-                    legal_square_indexes = board.highlight_legal_moves(screen, init_square_index)
+                    legal_square_indexes, en_passant_square_index = board.highlight_legal_moves(init_square_index, pawn_move)
             if event.type == pygame.MOUSEBUTTONUP and is_piece_being_held:
                 is_piece_being_held = False
+                if en_passant_square_index is not None:
+                    board.get_square_by_index(en_passant_square_index).occupying_piece = None
                 if board.squares[clicked_square_index].color == (73, 52, 227):
-                    board.make_move(screen, init_square_index, clicked_square_index)
+                    pawn_move = board.make_move(screen, init_square_index, clicked_square_index)
                 else:
                     board.drop_piece_back(init_square_index)
                     board.draw(screen, board.generate_fen())

@@ -1,0 +1,1 @@
+Classic game of chess implemented in pure python with pygame module

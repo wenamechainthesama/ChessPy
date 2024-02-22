@@ -60,7 +60,10 @@ class Board:
         fen = self.generate_fen()
         self.draw(screen, fen)
 
-    def highlight_legal_moves(self, screen, init_square_index):
+        if target_square.occupying_piece.type == PieceType.pawn:
+            return [init_square_index, target_square_index]
+
+    def highlight_legal_moves(self, init_square_index, pawn_move):
         calculation_function_type_of_piece_based = {
             PieceType.queen: calculate_sliding_moves,
             PieceType.rook: calculate_sliding_moves,
@@ -72,12 +75,18 @@ class Board:
         square = self.get_square_by_index(init_square_index)
         pieceType = square.occupying_piece.type
         calculation_function = calculation_function_type_of_piece_based[pieceType]
-        legal_square_indexes = calculation_function(init_square_index, self.squares)
+        legal_square_indexes = []
+        en_passant_square_index = None
+        if pieceType == PieceType.pawn:
+            legal_square_indexes, en_passant_square_index = calculate_pawn_moves(init_square_index, self.squares, pawn_move)
+        else:
+            legal_square_indexes = calculation_function(init_square_index, self.squares)
+
         for square_index in legal_square_indexes:
             self.get_square_by_index(square_index).color = (73, 52, 227)
         self.get_square_by_index(init_square_index).color = (74, 52, 227)
 
-        return legal_square_indexes
+        return (legal_square_indexes, en_passant_square_index)
 
     def drop_piece_back(self, init_square_index):
         self.squares[init_square_index].occupying_piece.chosen = False
