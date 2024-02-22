@@ -51,17 +51,23 @@ class Board:
             new_piece_coords = (mouse_pos[0] - 50, mouse_pos[1] - 50)
             piece.draw(screen, new_piece_coords)
 
-    def make_move(self, screen, init_square_index, target_square_index):
+    def make_move(self, screen, init_square_index, target_square_index, is_pawn_promotion):
         init_square = self.squares[init_square_index]
         target_square = self.squares[target_square_index]
+        isPawn = init_square.occupying_piece.type == PieceType.pawn
+        piece_color = init_square.occupying_piece.color
+        promotion_row = 0 if piece_color == PieceColor.white else ROWS_AMOUNT - 1
         init_square.occupying_piece.chosen = False
         target_square.occupying_piece = init_square.occupying_piece
+        if isPawn and target_square_index // ROWS_AMOUNT == promotion_row:
+            is_pawn_promotion = True  # target_square.occupying_piece.type = PieceType.queen
         init_square.occupying_piece = None
         fen = self.generate_fen()
         self.draw(screen, fen)
 
-        if target_square.occupying_piece.type == PieceType.pawn:
-            return [init_square_index, target_square_index]
+        if isPawn:
+            return ([init_square_index, target_square_index], is_pawn_promotion)
+        return (None, False)
 
     def highlight_legal_moves(self, init_square_index, pawn_move):
         calculation_function_type_of_piece_based = {
