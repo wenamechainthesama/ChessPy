@@ -1,4 +1,4 @@
-from GameEntities.enums import PieceColor
+from enums import PieceColor
 
 
 class GameManager:
@@ -6,10 +6,6 @@ class GameManager:
     is_white_move = True
     is_piece_being_held = False
     is_pawn_promoting = False
-    # is_castle_for_white_king_side_avaible = True
-    # is_castle_for_white_queen_side_avaible = True
-    # is_castle_for_black_king_side_avaible = True
-    # is_castle_for_black_queen_side_avaible = True
 
     @classmethod
     def is_right_color(cls, piece_color):

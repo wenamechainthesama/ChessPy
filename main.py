@@ -1,18 +1,20 @@
 import pygame
 from sys import exit
 from os.path import abspath, dirname
-from GameEntities.board import Board
-from GameEntities.enums import PieceType
-from GameEntities.piece import Piece
-from GameEntities.moves_generation import save_precomputed_move_data
+from board import Board
+from enums import PieceType
+from piece import Piece
+from moves_generation import save_precomputed_move_data
 from constants import *
-from GameEntities.game_manager import GameManager
+from game_manager import GameManager
 
 """
 TODO:
-1) concept of check, mate, and stalemate -
-2) castling
-3) sound effects
+clean-up
+mate
+castling
+draws: insufficientmaterial, repetition 50, repetition 3
+sound effects
 """
 
 ASSETS_PATH = f"{abspath(dirname(__file__))}\\PiecesImages"
@@ -40,14 +42,6 @@ def main():
                 pygame.quit()
                 exit()
 
-            # if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
-            #     print(
-            #         GameManager.is_castle_for_white_queen_side_avaible,
-            #         GameManager.is_castle_for_white_king_side_avaible,
-            #         GameManager.is_castle_for_black_queen_side_avaible,
-            #         GameManager.is_castle_for_black_king_side_avaible,
-            #     )
-
             clicked_square_index = board.get_square_index_by_coords(
                 pygame.mouse.get_pos()
             )
@@ -61,7 +55,7 @@ def main():
                     GameManager.is_piece_being_held = True
                     init_square_index = clicked_square_index
                     legal_square_indexes, en_passant_square_index = (
-                        board.highlight_legal_moves(init_square_index)
+                        board.highlight_legal_moves(screen, init_square_index)
                     )
             if event.type == pygame.MOUSEBUTTONUP:
                 promotion_box_squares = []
@@ -95,6 +89,7 @@ def main():
                 elif GameManager.is_piece_being_held:
                     GameManager.is_piece_being_held = False
                     if board.get_square_by_index(clicked_square_index).color == BLUE:
+                        offset = -8 if not GameManager.is_white_move else 8
                         if (
                             en_passant_square_index is not None
                             and (clicked_square_index + offset)
@@ -108,6 +103,15 @@ def main():
                             init_square_index,
                             clicked_square_index,
                         )
+                        row = clicked_square_index // ROWS_AMOUNT
+                        GameManager.move_made(init_square_index, clicked_square_index)
+                        if (
+                            clicked_square.occupying_piece.type == PieceType.pawn
+                            and row in [0, 7]
+                        ):
+                            GameManager.is_pawn_promoting = True
+                        fen = board.generate_fen()
+                        board.draw(screen, fen)
                     else:
                         board.drop_piece_back(init_square_index)
                         board.draw(screen, board.generate_fen())

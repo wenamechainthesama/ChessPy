@@ -1,8 +1,8 @@
 from pygame import image, transform, sprite, Surface
 from os.path import abspath, dirname
-from GameEntities.game_manager import GameManager
+from game_manager import GameManager
 
-ASSETS_PATH = f"{abspath(dirname(dirname(__file__)))}\\PiecesImages"
+ASSETS_PATH = f"{abspath(dirname(__file__))}\\PiecesImages"
 
 
 class Piece(sprite.Sprite):

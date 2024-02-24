@@ -1,5 +1,5 @@
-from GameEntities.enums import PieceType, PieceColor
-from GameEntities.game_manager import GameManager
+from enums import PieceType, PieceColor
+from game_manager import GameManager
 from constants import *
 
 num_squares_to_edge = [[]] * ROWS_AMOUNT**2
@@ -160,32 +160,6 @@ def calculate_king_moves(init_square_index, squares):
             if other_piece is not None and other_piece.color == color:
                 continue
             avaible_moves.append(new_index)
-
-    """ Handling castling """
-    # if color == PieceColor.white:
-    #     if GameManager.is_castle_for_white_queen_side_avaible:
-    #         piece1 = squares[57].occupying_piece
-    #         piece2 = squares[58].occupying_piece
-    #         piece3 = squares[59].occupying_piece
-    #         if piece1 is None and piece2 is None and piece3 is None:
-    #             avaible_moves.append(56)
-    #     if GameManager.is_castle_for_white_king_side_avaible:
-    #         piece1 = squares[61].occupying_piece
-    #         piece2 = squares[62].occupying_piece
-    #         if piece1 is None and piece2 is None:
-    #             avaible_moves.append(63)
-    # else:
-    #     if GameManager.is_castle_for_black_queen_side_avaible:
-    #         piece1 = squares[57].occupying_piece
-    #         piece2 = squares[58].occupying_piece
-    #         piece3 = squares[59].occupying_piece
-    #         if piece1 is None and piece2 is None and piece3 is None:
-    #             avaible_moves.append(0)
-    #     if GameManager.is_castle_for_black_king_side_avaible:
-    #         piece1 = squares[61].occupying_piece
-    #         piece2 = squares[62].occupying_piece
-    #         if piece1 is None and piece2 is None:
-    #             avaible_moves.append(7)
 
     return avaible_moves
 

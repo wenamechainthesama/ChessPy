@@ -17,7 +17,7 @@ for row in range(2):
             PIECE_IMAGE_RESOLUTION * column,
             PIECE_IMAGE_RESOLUTION * row,
             PIECE_IMAGE_RESOLUTION * (column + 1),
-            PIECE_IMAGE_RESOLUTION * (row + 1)
+            PIECE_IMAGE_RESOLUTION * (row + 1),
         )
         piece_image = image.crop(box)
         images.append(piece_image)
@@ -30,4 +30,6 @@ Filenames of saved images are following this pattern: filename = {color}{type}.p
 new_dir = "PiecesImages"
 mkdir(ASSETS_PATH)
 for index, image in enumerate(images):
-    image.save(f"{ASSETS_PATH}\{index // PIECE_TYPES_AMOUNT}{index % PIECE_TYPES_AMOUNT + 1}.png")
+    image.save(
+        f"{ASSETS_PATH}\{index // PIECE_TYPES_AMOUNT}{index % PIECE_TYPES_AMOUNT + 1}.png"
+    )
