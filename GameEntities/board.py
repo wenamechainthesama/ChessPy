@@ -1,12 +1,10 @@
 from GameEntities.piece import Piece
 from GameEntities.square import Square
 from GameEntities.enums import PieceType, PieceColor
-from GameEntities.movesGeneration import *
+from GameEntities.game_manager import GameManager
+from GameEntities.moves_generation import *
+from constants import *
 
-ROWS_AMOUNT = 8
-BOARD_SIZE = 800
-WHITE = (204, 166, 133)
-BLACK = (145, 118, 89)
 
 class Board:
     def __init__(self):
@@ -45,31 +43,67 @@ class Board:
     def choose_piece(self, screen, mouse_pos, init_square_index):
         square = self.squares[init_square_index]
         if square.occupying_piece is not None:
-            """ Hold piece by cursor until dropped """
+            """Hold piece by cursor until dropped"""
             piece = square.occupying_piece
             piece.chosen = True
             new_piece_coords = (mouse_pos[0] - 50, mouse_pos[1] - 50)
             piece.draw(screen, new_piece_coords)
 
-    def make_move(self, screen, init_square_index, target_square_index, is_pawn_promotion):
+    def make_move(self, screen, init_square_index, target_square_index):
+        # board_corners = [56, 63, 0, 7]
+
+        GameManager.move_made(init_square_index, target_square_index)
         init_square = self.squares[init_square_index]
+        # color = init_square.occupying_piece.color
         target_square = self.squares[target_square_index]
-        isPawn = init_square.occupying_piece.type == PieceType.pawn
-        piece_color = init_square.occupying_piece.color
-        promotion_row = 0 if piece_color == PieceColor.white else ROWS_AMOUNT - 1
+
+        """ Phorbiding castling """
+        # if init_square.occupying_piece.type == PieceType.king:
+        #     if target_square.occupying_piece.type == PieceType.rook:
+        #         print("Hi")
+        #     elif color == PieceColor.white:
+        #         GameManager.is_castle_for_white_king_side_avaible = False
+        #         GameManager.is_castle_for_white_queen_side_avaible = False
+        #     else:
+        #         GameManager.is_castle_for_black_king_side_avaible = False
+        #         GameManager.is_castle_for_black_queen_side_avaible = False
+        # elif init_square.occupying_piece.type == PieceType.rook:
+        #     if init_square_index == board_corners[0]:
+        #         GameManager.is_castle_for_white_queen_side_avaible = False
+        #     elif init_square_index == board_corners[1]:
+        #         GameManager.is_castle_for_white_king_side_avaible = False
+        #     elif init_square_index == board_corners[2]:
+        #         GameManager.is_castle_for_black_queen_side_avaible = False
+        #     elif init_square_index == board_corners[3]:
+        #         GameManager.is_castle_for_black_king_side_avaible = False
+        # elif (
+        #     target_square.occupying_piece is not None
+        #     and target_square.occupying_piece.type == PieceType.rook
+        # ):
+        #     if target_square_index == board_corners[0]:
+        #         GameManager.is_castle_for_white_queen_side_avaible = False
+        #     elif target_square_index == board_corners[1]:
+        #         GameManager.is_castle_for_white_king_side_avaible = False
+        #     elif target_square_index == board_corners[2]:
+        #         GameManager.is_castle_for_black_queen_side_avaible = False
+        #     elif target_square_index == board_corners[3]:
+        #         GameManager.is_castle_for_black_king_side_avaible = False
+
         init_square.occupying_piece.chosen = False
         target_square.occupying_piece = init_square.occupying_piece
-        if isPawn and target_square_index // ROWS_AMOUNT == promotion_row:
-            is_pawn_promotion = True  # target_square.occupying_piece.type = PieceType.queen
         init_square.occupying_piece = None
         fen = self.generate_fen()
         self.draw(screen, fen)
 
-        if isPawn:
-            return ([init_square_index, target_square_index], is_pawn_promotion)
-        return (None, False)
+        row = target_square_index // ROWS_AMOUNT
+        if target_square.occupying_piece.type == PieceType.pawn and row in [0, 7]:
+            GameManager.is_pawn_promoting = True
 
-    def highlight_legal_moves(self, init_square_index, pawn_move):
+    @staticmethod
+    def get_square_index_by_coords(pos):
+        return pos[1] // 100 * ROWS_AMOUNT + pos[0] // 100
+
+    def highlight_legal_moves(self, init_square_index):
         calculation_function_type_of_piece_based = {
             PieceType.queen: calculate_sliding_moves,
             PieceType.rook: calculate_sliding_moves,
@@ -84,13 +118,15 @@ class Board:
         legal_square_indexes = []
         en_passant_square_index = None
         if pieceType == PieceType.pawn:
-            legal_square_indexes, en_passant_square_index = calculate_pawn_moves(init_square_index, self.squares, pawn_move)
+            legal_square_indexes, en_passant_square_index = calculate_pawn_moves(
+                init_square_index, self.squares
+            )
         else:
             legal_square_indexes = calculation_function(init_square_index, self.squares)
 
         for square_index in legal_square_indexes:
-            self.get_square_by_index(square_index).color = (73, 52, 227)
-        self.get_square_by_index(init_square_index).color = (74, 52, 227)
+            self.get_square_by_index(square_index).color = BLUE
+        self.get_square_by_index(init_square_index).color = (128, 52, 235)
 
         return (legal_square_indexes, en_passant_square_index)
 
@@ -115,7 +151,9 @@ class Board:
                     empty_square_counter = 0
                 piece_type = related_piece.type
                 piece_color = related_piece.color
-                letter = list(self.piece_mark_accordance.keys())[list(self.piece_mark_accordance.values()).index(piece_type)]
+                letter = list(self.piece_mark_accordance.keys())[
+                    list(self.piece_mark_accordance.values()).index(piece_type)
+                ]
                 if piece_color:
                     letter = letter.upper()
                 fen += letter
@@ -128,7 +166,7 @@ class Board:
         return self.squares[square_index]
 
     def draw(self, screen, fen):
-        """ At first draw squares """
+        """At first draw squares"""
         for square in self.squares:
             square.draw(screen)
 

@@ -1,10 +1,12 @@
 from GameEntities.enums import PieceType, PieceColor
+from GameEntities.game_manager import GameManager
+from constants import *
 
-ROWS_AMOUNT = 8
-num_squares_to_edge = [[]] * ROWS_AMOUNT ** 2
+num_squares_to_edge = [[]] * ROWS_AMOUNT**2
+
 
 def calculate_sliding_moves(init_square_index, squares):
-    """ 
+    """
     Generate moves for bishop, rook and queen
     at the same time as they are similar to each other
     """
@@ -22,15 +24,22 @@ def calculate_sliding_moves(init_square_index, squares):
         for n in range(1, num_squares_to_edge[init_square_index][offset_index] + 1):
             target_square_index = init_square_index + offsets[offset_index] * n
             piece_on_target_square = squares[target_square_index].occupying_piece
-            if piece_on_target_square is not None and piece_on_target_square.color == moving_piece_color:
+            if (
+                piece_on_target_square is not None
+                and piece_on_target_square.color == moving_piece_color
+            ):
                 break
 
             avaible_moves.append(target_square_index)
 
-            if piece_on_target_square is not None and piece_on_target_square.color != moving_piece_color:
+            if (
+                piece_on_target_square is not None
+                and piece_on_target_square.color != moving_piece_color
+            ):
                 break
 
     return avaible_moves
+
 
 def calculate_knight_moves(init_square_index, squares):
     offsets = [-17, -15, -10, -6, 6, 10, 15, +17]
@@ -42,18 +51,31 @@ def calculate_knight_moves(init_square_index, squares):
         new_index = init_square_index + offset
         new_index_row = new_index // ROWS_AMOUNT
         new_index_column = new_index % ROWS_AMOUNT
-        if new_index < 64 and new_index >= 0 and (abs(new_index_column - current_column) + abs(new_index_row - current_row)) == 3:
+        if (
+            new_index < 64
+            and new_index >= 0
+            and (
+                abs(new_index_column - current_column)
+                + abs(new_index_row - current_row)
+            )
+            == 3
+        ):
             other_piece = squares[new_index].occupying_piece
-            if other_piece is not None and other_piece.color == squares[init_square_index].occupying_piece.color:
-                    continue
+            if (
+                other_piece is not None
+                and other_piece.color
+                == squares[init_square_index].occupying_piece.color
+            ):
+                continue
             avaible_moves.append(new_index)
-            
+
     return avaible_moves
 
-def calculate_pawn_moves(init_square_index, squares, pawn_move):
+
+def calculate_pawn_moves(init_square_index, squares):
     avaible_moves = []
     en_passant_square_index = None
-    
+
     piece = squares[init_square_index].occupying_piece
     isPawnWhite = piece.color == PieceColor.white
     initial_row = 6 if isPawnWhite else 1
@@ -62,9 +84,16 @@ def calculate_pawn_moves(init_square_index, squares, pawn_move):
 
     move_offset = -8 if isPawnWhite else 8
     new_move_square_index = init_square_index + move_offset
-    if new_move_square_index >= 0 and new_move_square_index < 64 and squares[new_move_square_index].occupying_piece is None:
+    if (
+        new_move_square_index >= 0
+        and new_move_square_index < 64
+        and squares[new_move_square_index].occupying_piece is None
+    ):
         new_double_move_square_index = init_square_index + 2 * move_offset
-        if current_row == initial_row and squares[new_double_move_square_index].occupying_piece is None:
+        if (
+            current_row == initial_row
+            and squares[new_double_move_square_index].occupying_piece is None
+        ):
             avaible_moves.append(new_double_move_square_index)
         avaible_moves.append(init_square_index + move_offset)
 
@@ -86,6 +115,10 @@ def calculate_pawn_moves(init_square_index, squares, pawn_move):
                 avaible_moves.append(new_kill_square_index)
 
     """ Implementation of en passant """
+    pawn_move = None
+    if GameManager.moves_history != []:
+        pawn_move = GameManager.moves_history[-1]
+
     if pawn_move is not None:
         other_init_index = pawn_move[0]
         init_row = other_init_index // ROWS_AMOUNT
@@ -96,7 +129,11 @@ def calculate_pawn_moves(init_square_index, squares, pawn_move):
 
         other_piece_color = PieceColor.black if isPawnWhite else PieceColor.white
         other_piece_init_row = 6 if other_piece_color == PieceColor.white else 1
-        if init_row == other_piece_init_row and abs(target_row - init_row) == 2 and target_row == current_row:
+        if (
+            init_row == other_piece_init_row
+            and abs(target_row - init_row) == 2
+            and target_row == current_row
+        ):
             if current_column - target_col == 1:
                 avaible_moves.append(init_square_index + kill_offsets[0])
                 en_passant_square_index = other_target_index
@@ -106,21 +143,49 @@ def calculate_pawn_moves(init_square_index, squares, pawn_move):
 
     return (avaible_moves, en_passant_square_index)
 
+
 def calculate_king_moves(init_square_index, squares):
+    color = squares[init_square_index].occupying_piece.color
     offsets = [-1, 7, -9, -8, 8, 1, -7, 9]
     if init_square_index % 8 == 0:
         offsets = offsets[3:]
     elif (init_square_index + 1) % 8 == 0:
-        offsets = offsets[:(len(offsets) - 3)]
+        offsets = offsets[: (len(offsets) - 3)]
     avaible_moves = []
     new_index = None
     for offset in offsets:
         new_index = init_square_index + offset
         if new_index < 64 and new_index >= 0:
             other_piece = squares[new_index].occupying_piece
-            if other_piece is not None and other_piece.color == squares[init_square_index].occupying_piece.color:
-                    continue
+            if other_piece is not None and other_piece.color == color:
+                continue
             avaible_moves.append(new_index)
+
+    """ Handling castling """
+    # if color == PieceColor.white:
+    #     if GameManager.is_castle_for_white_queen_side_avaible:
+    #         piece1 = squares[57].occupying_piece
+    #         piece2 = squares[58].occupying_piece
+    #         piece3 = squares[59].occupying_piece
+    #         if piece1 is None and piece2 is None and piece3 is None:
+    #             avaible_moves.append(56)
+    #     if GameManager.is_castle_for_white_king_side_avaible:
+    #         piece1 = squares[61].occupying_piece
+    #         piece2 = squares[62].occupying_piece
+    #         if piece1 is None and piece2 is None:
+    #             avaible_moves.append(63)
+    # else:
+    #     if GameManager.is_castle_for_black_queen_side_avaible:
+    #         piece1 = squares[57].occupying_piece
+    #         piece2 = squares[58].occupying_piece
+    #         piece3 = squares[59].occupying_piece
+    #         if piece1 is None and piece2 is None and piece3 is None:
+    #             avaible_moves.append(0)
+    #     if GameManager.is_castle_for_black_king_side_avaible:
+    #         piece1 = squares[61].occupying_piece
+    #         piece2 = squares[62].occupying_piece
+    #         if piece1 is None and piece2 is None:
+    #             avaible_moves.append(7)
 
     return avaible_moves
 
