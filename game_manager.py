@@ -6,6 +6,7 @@ class GameManager:
     is_white_move = True
     is_piece_being_held = False
     is_pawn_promoting = False
+    is_castling = False
 
     @classmethod
     def is_right_color(cls, piece_color):

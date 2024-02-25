@@ -8,9 +8,6 @@ class Square:
         self.image = Surface((100, 100))
         self.occupying_piece = None
 
-    def has_piece(self):
-        return self.occupying_piece
-
     def get_piece_color(self):
         return self.occupying_piece.color
 

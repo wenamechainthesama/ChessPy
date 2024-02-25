@@ -47,6 +47,8 @@ class Board:
             piece_type = self.piece_mark_accordance[letter.lower()]
             piece_color = PieceColor.black if letter.isupper() else PieceColor.white
             piece = Piece(piece_type, piece_color)
+            if current_square.occupying_piece is not None:
+                piece.ever_moved = current_square.occupying_piece.ever_moved
             piece.draw(screen, current_square.center)
             current_square.occupying_piece = piece
             square_index += 1
@@ -60,19 +62,62 @@ class Board:
             new_piece_coords = (mouse_pos[0] - 50, mouse_pos[1] - 50)
             piece.draw(screen, new_piece_coords)
 
-    def make_move(self, screen, init_square_index, target_square_index):
+    def make_move(self, init_square_index, target_square_index, is_validating=False):
         init_square = self.squares[init_square_index]
         target_square = self.squares[target_square_index]
 
         """ Save king position for check verification """
         if init_square.occupying_piece.type == PieceType.king:
             color = init_square.occupying_piece.color
+            is_castling = False
+            if (
+                target_square.occupying_piece is not None
+                and target_square.occupying_piece.color == color
+            ):
+                is_castling = True
+                if not is_validating:
+                    GameManager.is_castling = True
+                king_jorney_distance = abs(target_square_index - init_square_index)
+                king_square_index, rook_square_index = (
+                    init_square_index,
+                    target_square_index,
+                )
+                """ Long castle """
+                if king_jorney_distance == 4:
+                    king_square_index -= 2
+                    rook_square_index += 3
+
+                # """ Short castle """
+                elif king_jorney_distance == 3:
+                    king_square_index += 2
+                    rook_square_index -= 2
+
+                target_square_index = king_square_index
+
+                king_square = self.squares[king_square_index]
+                rook_square = self.squares[rook_square_index]
+
+                """ Moving rook """
+                rook_square.occupying_piece = target_square.occupying_piece
+                rook_square.occupying_piece.ever_moved = True
+                target_square.occupying_piece = None
+
+                """ Moving king """
+                init_square.occupying_piece.chosen = False
+                king_square.occupying_piece = init_square.occupying_piece
+                king_square.occupying_piece.ever_moved = True
+                init_square.occupying_piece = None
+
             if color == PieceColor.white:
                 self.white_king_position = target_square_index
             else:
                 self.black_king_position = target_square_index
 
+            if is_castling:
+                return
+
         init_square.occupying_piece.chosen = False
+        init_square.occupying_piece.ever_moved = True
         target_square.occupying_piece = init_square.occupying_piece
         init_square.occupying_piece = None
 
@@ -81,11 +126,16 @@ class Board:
         return pos[1] // 100 * ROWS_AMOUNT + pos[0] // 100
 
     def validate_move_on_legality(self, screen, init_square_index, target_square_index):
+        """
+        Broad-force approach:
+        Make move that we wanna validate on the copy of board
+        and if king was captured this move is obviosly illegal
+        """
         temp_board = Board()
         temp_board.white_king_position = self.white_king_position
         temp_board.black_king_position = self.black_king_position
-        temp_board.draw(screen, self.generate_fen())
-        temp_board.make_move(screen, init_square_index, target_square_index)
+        temp_board.setup_position(screen, self.generate_fen())
+        temp_board.make_move(init_square_index, target_square_index, is_validating=True)
         responses = temp_board.get_all_possible_moves()
         kings_color = (
             PieceColor.white if GameManager.is_white_move else PieceColor.black
@@ -95,7 +145,6 @@ class Board:
             if kings_color == PieceColor.white
             else temp_board.black_king_position
         )
-        print(kings_position)
         for final_square_index in responses:
             if kings_position == final_square_index:
                 return False
@@ -124,13 +173,10 @@ class Board:
                 legal_square_indexes_global.extend(legal_square_indexes_local)
         return legal_square_indexes_global
 
-    def is_king_under_check(self, kings_position, kings_color):
-        for square_index, square in enumerate(self.squares):
+    def is_threatened_square(self, square_index):
+        for current_square_index, square in enumerate(self.squares):
             piece_on_current_square = square.occupying_piece
-            if (
-                piece_on_current_square is not None
-                and piece_on_current_square.color != kings_color
-            ):
+            if piece_on_current_square is not None:
                 calculation_function = self.calculation_function_type_of_piece_based[
                     piece_on_current_square.type
                 ]
@@ -138,20 +184,21 @@ class Board:
                 pseudo_legal_moves = []
                 if piece_on_current_square.type == PieceType.pawn:
                     pseudo_legal_moves, _ = calculation_function(
-                        square_index, self.squares
+                        current_square_index, self.squares
                     )
                 else:
                     pseudo_legal_moves = calculation_function(
-                        square_index, self.squares
+                        current_square_index, self.squares
                     )
 
-                """ If any piece attacks king, so it's check """
-                if kings_position in pseudo_legal_moves:
+                """ If any piece can move to this square so it's threatened """
+                if square_index in pseudo_legal_moves:
+                    print(piece_on_current_square, f"index: {current_square_index}")
                     return True
         return False
 
     def highlight_legal_moves(self, screen, init_square_index):
-        square = self.get_square_by_index(init_square_index)
+        square = self.squares[init_square_index]
         pieceType = square.occupying_piece.type
         calculation_function = self.calculation_function_type_of_piece_based[pieceType]
         legal_square_indexes = []
@@ -165,8 +212,8 @@ class Board:
 
         for square_index in legal_square_indexes:
             if self.validate_move_on_legality(screen, init_square_index, square_index):
-                self.get_square_by_index(square_index).color = BLUE
-        self.get_square_by_index(init_square_index).color = (128, 52, 235)
+                self.squares[square_index].color = BLUE
+        self.squares[init_square_index].color = (128, 52, 235)
 
         return (legal_square_indexes, en_passant_square_index)
 

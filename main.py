@@ -42,6 +42,22 @@ def main():
                 pygame.quit()
                 exit()
 
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                print(board.is_threatened_square(36))
+            #     # for square_index in range(0, 64):
+            #     #     print(
+            #     #         square_index,
+            #     #         board.squares[square_index].occupying_piece,
+            #     #         sep="\n",
+            #     #     )
+            #     print(
+            #         "king",
+            #         board.white_king_position,
+            #         board.get_square_by_index(
+            #             board.white_king_position
+            #         ).occupying_piece,
+            #     )
+
             clicked_square_index = board.get_square_index_by_coords(
                 pygame.mouse.get_pos()
             )
@@ -99,17 +115,19 @@ def main():
                                 en_passant_square_index
                             ).occupying_piece = None
                         board.make_move(
-                            screen,
                             init_square_index,
                             clicked_square_index,
                         )
                         row = clicked_square_index // ROWS_AMOUNT
+                        """ Switch turns and remember move """
                         GameManager.move_made(init_square_index, clicked_square_index)
                         if (
-                            clicked_square.occupying_piece.type == PieceType.pawn
+                            not GameManager.is_castling
+                            and clicked_square.occupying_piece.type == PieceType.pawn
                             and row in [0, 7]
                         ):
                             GameManager.is_pawn_promoting = True
+                        GameManager.is_castling = False
                         fen = board.generate_fen()
                         board.draw(screen, fen)
                     else:
@@ -139,7 +157,7 @@ def main():
             )
 
         """ Lock mouse inside the screen """
-        pygame.event.set_grab(True)
+        # pygame.event.set_grab(True)
 
         pygame.display.flip()
 

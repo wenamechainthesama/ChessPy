@@ -145,7 +145,7 @@ def calculate_pawn_moves(init_square_index, squares):
 
 
 def calculate_king_moves(init_square_index, squares):
-    color = squares[init_square_index].occupying_piece.color
+    piece = squares[init_square_index].occupying_piece
     offsets = [-1, 7, -9, -8, 8, 1, -7, 9]
     if init_square_index % 8 == 0:
         offsets = offsets[3:]
@@ -157,9 +157,46 @@ def calculate_king_moves(init_square_index, squares):
         new_index = init_square_index + offset
         if new_index < 64 and new_index >= 0:
             other_piece = squares[new_index].occupying_piece
-            if other_piece is not None and other_piece.color == color:
+            if other_piece is not None and other_piece.color == piece.color:
                 continue
             avaible_moves.append(new_index)
+
+    """ Handle castling """
+    if not piece.ever_moved:
+        king_row = init_square_index // ROWS_AMOUNT
+        left_rook_pos = king_row * ROWS_AMOUNT
+        left_rook = squares[left_rook_pos].occupying_piece
+        """
+        We don't need to check if its rook because
+        if it has never moved it definitely is
+        """
+        if left_rook is not None and not left_rook.ever_moved:
+            """
+            Checking if there are any pieces between king and rook
+            """
+            for square_index in range(left_rook_pos + 1, left_rook_pos + 4):
+                square = squares[square_index]
+                if square.occupying_piece is not None:
+                    break
+
+                """
+                If for loop reached last index it means
+                that there are no pieces in between
+                """
+                if square_index == left_rook_pos + 3:
+                    avaible_moves.append(left_rook_pos)
+
+        """ Same logic for other rook """
+        right_rook_pos = left_rook_pos + 7
+        right_rook = squares[right_rook_pos].occupying_piece
+        if right_rook is not None and not right_rook.ever_moved:
+            for square_index in range(right_rook_pos - 2, right_rook_pos):
+                square = squares[square_index]
+                if squares[square_index].occupying_piece is not None:
+                    break
+                if square_index == right_rook_pos - 1:
+                    print("Hey")
+                    avaible_moves.append(right_rook_pos)
 
     return avaible_moves
 

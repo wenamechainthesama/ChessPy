@@ -15,6 +15,7 @@ class Piece(sprite.Sprite):
         ).convert_alpha()
         self.image = transform.scale(self.image, (100, 100))
         self.chosen = False
+        self.ever_moved = False
 
     @staticmethod
     def promote_pawn(screen, target_square):
@@ -37,6 +38,10 @@ class Piece(sprite.Sprite):
                 ),
                 (target_square.center[0], box_y + offset),
             )
+
+    def __repr__(self):
+        representation = f"""Type: {self.type}\nColor: {self.color}\nChosen: {self.chosen}\nEver moved: {self.ever_moved}"""
+        return representation
 
     def draw(self, screen, pos):
         screen.blit(self.image, pos)

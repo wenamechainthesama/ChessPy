@@ -7,6 +7,7 @@ class PieceType:
     rook = 5
     pawn = 6
 
+
 class PieceColor:
     white = 0
     black = 1
