@@ -12,7 +12,6 @@ from game_manager import GameManager
 TODO:
 clean-up
 mate
-castling
 draws: insufficientmaterial, repetition 50, repetition 3
 sound effects
 """
@@ -43,7 +42,7 @@ def main():
                 exit()
 
             if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
-                print(board.is_threatened_square(36))
+                print(GameManager.is_white_move)
             #     # for square_index in range(0, 64):
             #     #     print(
             #     #         square_index,
@@ -119,7 +118,7 @@ def main():
                             clicked_square_index,
                         )
                         row = clicked_square_index // ROWS_AMOUNT
-                        """ Switch turns and remember move """
+                        """ Switch turn and remember move """
                         GameManager.move_made(init_square_index, clicked_square_index)
                         if (
                             not GameManager.is_castling

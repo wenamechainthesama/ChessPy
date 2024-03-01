@@ -108,10 +108,11 @@ class Board:
                 king_square.occupying_piece.ever_moved = True
                 init_square.occupying_piece = None
 
-            if color == PieceColor.white:
-                self.white_king_position = target_square_index
-            else:
-                self.black_king_position = target_square_index
+            if not is_validating:
+                if color == PieceColor.white:
+                    self.white_king_position = target_square_index
+                else:
+                    self.black_king_position = target_square_index
 
             if is_castling:
                 return
@@ -137,6 +138,10 @@ class Board:
         temp_board.setup_position(screen, self.generate_fen())
         temp_board.make_move(init_square_index, target_square_index, is_validating=True)
         responses = temp_board.get_all_possible_moves()
+        piece_type = self.squares[init_square_index].occupying_piece.type
+        if piece_type == PieceType.king:
+            return target_square_index not in responses
+        
         kings_color = (
             PieceColor.white if GameManager.is_white_move else PieceColor.black
         )
@@ -145,10 +150,8 @@ class Board:
             if kings_color == PieceColor.white
             else temp_board.black_king_position
         )
-        for final_square_index in responses:
-            if kings_position == final_square_index:
-                return False
-        return True
+
+        return kings_position not in responses
 
     def get_all_possible_moves(board):
         legal_square_indexes_global = []
@@ -173,31 +176,34 @@ class Board:
                 legal_square_indexes_global.extend(legal_square_indexes_local)
         return legal_square_indexes_global
 
-    def is_threatened_square(self, square_index):
-        for current_square_index, square in enumerate(self.squares):
-            piece_on_current_square = square.occupying_piece
-            if piece_on_current_square is not None:
-                calculation_function = self.calculation_function_type_of_piece_based[
-                    piece_on_current_square.type
-                ]
-                """ Calculate 'legal' moves of current piece"""
-                pseudo_legal_moves = []
-                if piece_on_current_square.type == PieceType.pawn:
-                    pseudo_legal_moves, _ = calculation_function(
-                        current_square_index, self.squares
-                    )
-                else:
-                    pseudo_legal_moves = calculation_function(
-                        current_square_index, self.squares
-                    )
+    # def is_threatened_square(self, square_index):
+    #     for current_square_index, square in enumerate(self.squares):
+    #         piece_on_current_square = square.occupying_piece
+    #         if piece_on_current_square is not None:
+    #             calculation_function = self.calculation_function_type_of_piece_based[
+    #                 piece_on_current_square.type
+    #             ]
+    #             """ Calculate 'legal' moves of current piece"""
+    #             pseudo_legal_moves = []
+    #             if piece_on_current_square.type == PieceType.pawn:
+    #                 pseudo_legal_moves_to_check, _ = calculation_function(
+    #                     current_square_index, self.squares
+    #                 )
+    #                 for pseudo_legal_move in pseudo_legal_moves_to_check:
+    #                     if pseudo_legal_move % ROWS_AMOUNT != current_square_index % ROWS_AMOUNT:
+    #                         pseudo_legal_moves.append(current_square_index)
+    #             else:
+    #                 pseudo_legal_moves = calculation_function(
+    #                     current_square_index, self.squares
+    #                 )
 
-                """ If any piece can move to this square so it's threatened """
-                if square_index in pseudo_legal_moves:
-                    print(piece_on_current_square, f"index: {current_square_index}")
-                    return True
-        return False
+    #             """ If any piece can move to this square so it's threatened """
+    #             if square_index in pseudo_legal_moves:
+    #                 return True
+    #     return False
 
     def highlight_legal_moves(self, screen, init_square_index):
+        print("P", init_square_index)
         square = self.squares[init_square_index]
         pieceType = square.occupying_piece.type
         calculation_function = self.calculation_function_type_of_piece_based[pieceType]
