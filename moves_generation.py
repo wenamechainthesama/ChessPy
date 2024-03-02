@@ -162,7 +162,9 @@ def calculate_king_moves(init_square_index, squares):
             avaible_moves.append(new_index)
 
     """ Handle castling """
-    if GameManager.is_right_color(piece.color) and not is_threatened_square(init_square_index, piece.color, squares):
+    if GameManager.is_right_color(piece.color) and not is_threatened_square(
+        init_square_index, piece.color, squares
+    ):
         if not piece.ever_moved:
             king_row = init_square_index // ROWS_AMOUNT
             left_rook_pos = king_row * ROWS_AMOUNT
@@ -171,7 +173,11 @@ def calculate_king_moves(init_square_index, squares):
             We don't need to check if its rook because
             if it has never moved it definitely is
             """
-            if left_rook is not None and not left_rook.ever_moved and not is_threatened_square(left_rook_pos, piece.color, squares):
+            if (
+                left_rook is not None
+                and not left_rook.ever_moved
+                and not is_threatened_square(left_rook_pos, piece.color, squares)
+            ):
                 """
                 Checking if there are any pieces between king and rook
                 """
@@ -191,13 +197,13 @@ def calculate_king_moves(init_square_index, squares):
                         avaible_moves.append(left_rook_pos)
 
             """ Same logic for other rook """
-            # right_rook_pos = init_square_index // ROWS_AMOUNT + 7
-            # print(init_square_index)
-            # print(piece.color)
             right_rook_pos = king_row * ROWS_AMOUNT + 7
-            # print(right_rook_pos)
             right_rook = squares[right_rook_pos].occupying_piece
-            if right_rook is not None and not right_rook.ever_moved and not is_threatened_square(right_rook_pos, piece.color, squares):
+            if (
+                right_rook is not None
+                and not right_rook.ever_moved
+                and not is_threatened_square(right_rook_pos, piece.color, squares)
+            ):
                 for square_index in range(right_rook_pos - 2, right_rook_pos):
                     if squares[
                         square_index
@@ -222,12 +228,6 @@ def is_threatened_square(square_index, color, squares):
     }
     for current_square_index, square in enumerate(squares):
         piece_on_current_square = square.occupying_piece
-        # print(piece_on_current_square, GameManager.is_right_color(piece_on_current_square.color))
-        # print(
-        #     piece_on_current_square.color
-        #     if piece_on_current_square is not None
-        #     else None
-        # )
         if (
             piece_on_current_square is not None
             and color != piece_on_current_square.color
@@ -254,30 +254,6 @@ def is_threatened_square(square_index, color, squares):
             if square_index in pseudo_legal_moves:
                 return True
     return False
-    # for square_index, square in enumerate(squares):
-    #     piece_on_current_square = square.occupying_piece
-    #     if (
-    #         piece_on_current_square is not None
-    #         and piece_on_current_square.color != color
-    #     ):
-    #         calculation_function = calculation_function_type_of_piece_based[
-    #             piece_on_current_square.type
-    #         ]
-    #         """ Calculate 'legal' moves of current piece"""
-    #         pseudo_legal_moves = []
-    #         if piece_on_current_square.type == PieceType.pawn:
-    #             pseudo_legal_moves, _ = calculation_function(
-    #                 square_index, squares
-    #             )
-    #         else:
-    #             pseudo_legal_moves = calculation_function(
-    #                 square_index, squares
-    #             )
-
-    #         """ If any piece attacks king, so it's check """
-    #         if square_index1 in pseudo_legal_moves:
-    #             return True
-    # return False
 
 
 def save_precomputed_move_data():

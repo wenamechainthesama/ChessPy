@@ -11,3 +11,10 @@ class PieceType:
 class PieceColor:
     white = 0
     black = 1
+
+
+class GameState:
+    playing = 0
+    white_won = 1
+    black_won = 2
+    draw = 3

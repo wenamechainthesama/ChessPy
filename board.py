@@ -1,9 +1,11 @@
 from piece import Piece
 from square import Square
-from enums import PieceType, PieceColor
+from enums import PieceType, PieceColor, GameState
 from game_manager import GameManager
 from moves_generation import *
 from constants import *
+from functools import reduce
+from audio_player import Sound, AudioPlayer
 
 
 class Board:
@@ -26,8 +28,12 @@ class Board:
             PieceType.king: calculate_king_moves,
         }
 
-        self.white_king_position = 60
-        self.black_king_position = 4
+        self.white_king_position = "23"
+        self.black_king_position = "234"
+        self.fifty_move_counter = 0
+        self.last_white_move_was_non_capture = None
+
+        self.audioplayer = AudioPlayer()
 
         self.initialize_squares()
 
@@ -53,6 +59,15 @@ class Board:
             current_square.occupying_piece = piece
             square_index += 1
 
+    def find_kings(self):
+        for square_index, square in enumerate(self.squares):
+            piece = square.occupying_piece
+            if piece is not None and piece.type == PieceType.king:
+                if piece.color == PieceColor.white:
+                    self.white_king_position = square_index
+                else:
+                    self.black_king_position = square_index
+
     def choose_piece(self, screen, mouse_pos, init_square_index):
         square = self.squares[init_square_index]
         if square.occupying_piece is not None:
@@ -66,7 +81,6 @@ class Board:
         init_square = self.squares[init_square_index]
         target_square = self.squares[target_square_index]
 
-        """ Save king position for check verification """
         if init_square.occupying_piece.type == PieceType.king:
             color = init_square.occupying_piece.color
             is_castling = False
@@ -108,23 +122,100 @@ class Board:
                 king_square.occupying_piece.ever_moved = True
                 init_square.occupying_piece = None
 
-            if not is_validating:
-                if color == PieceColor.white:
-                    self.white_king_position = target_square_index
-                else:
-                    self.black_king_position = target_square_index
+                if not is_validating:
+                    self.audioplayer.play(Sound.castle)
 
             if is_castling:
                 return
 
         init_square.occupying_piece.chosen = False
         init_square.occupying_piece.ever_moved = True
+        is_capturing = target_square.occupying_piece is not None
+        piece_type = init_square.occupying_piece.type
         target_square.occupying_piece = init_square.occupying_piece
         init_square.occupying_piece = None
+        if not is_validating and (
+            target_square.occupying_piece.color == PieceColor.black
+            and self.last_white_move_was_non_capture
+        ):
+            self.fifty_move_counter += 1
+
+        if not is_validating and (is_capturing or piece_type == PieceType.pawn):
+            self.fifty_move_counter = 0
+            self.last_white_move_was_non_capture = False
+        else:
+            self.last_white_move_was_non_capture = True
+
+        if not is_validating:
+            kings_color = (
+                PieceColor.white if not GameManager.is_white_move else PieceColor.black
+            )
+            kings_position = (
+                self.white_king_position
+                if kings_color == PieceColor.white
+                else self.black_king_position
+            )
+
+            if is_threatened_square(kings_position, kings_color, self.squares):
+                self.audioplayer.play(Sound.check)
+            elif is_capturing:
+                self.audioplayer.play(Sound.capture)
+            else:
+                self.audioplayer.play(Sound.move)
 
     @staticmethod
     def get_square_index_by_coords(pos):
         return pos[1] // 100 * ROWS_AMOUNT + pos[0] // 100
+
+    def detect_checkmate(self, screen):
+        kings_color = (
+            PieceColor.white if GameManager.is_white_move else PieceColor.black
+        )
+        opponent_king_pos = (
+            self.white_king_position
+            if kings_color == PieceColor.white
+            else self.black_king_position
+        )
+        legal_moves_exist = False
+        all_possible_moves = self.get_all_possible_moves(kings_color)
+        for square_index, pseudo_legal_squares in all_possible_moves.items():
+            for target_square_index in pseudo_legal_squares:
+                if self.validate_move_on_legality(
+                    screen, square_index, target_square_index
+                ):
+                    legal_moves_exist = True
+                    break
+            if legal_moves_exist:
+                break
+        if not legal_moves_exist:
+            if is_threatened_square(opponent_king_pos, kings_color, self.squares):
+                GameManager.game_state = (
+                    GameState.black_won
+                    if kings_color == PieceColor.white
+                    else GameState.white_won
+                )
+            else:
+                GameManager.game_state = GameState.draw
+
+    def detect_stalemate(self):
+        if self.fifty_move_counter == 50:
+            GameManager.game_state = GameState.draw
+
+        white_pieces = {}
+        black_pieces = {}
+        for square_index, square in enumerate(self.squares):
+            piece = square.occupying_piece
+            if piece is not None:
+                square_color = (
+                    PieceColor.white
+                    if (square_index // ROWS_AMOUNT + square_index % ROWS_AMOUNT) % 2
+                    == 0
+                    else PieceColor.black
+                )
+                if piece.color == PieceColor.white:
+                    white_pieces.setdefault(piece.type, square_color)
+                else:
+                    black_pieces.setdefault(piece.type, square_color)
 
     def validate_move_on_legality(self, screen, init_square_index, target_square_index):
         """
@@ -137,11 +228,16 @@ class Board:
         temp_board.black_king_position = self.black_king_position
         temp_board.setup_position(screen, self.generate_fen())
         temp_board.make_move(init_square_index, target_square_index, is_validating=True)
-        responses = temp_board.get_all_possible_moves()
+        responses = reduce(
+            lambda x, y: x + y,
+            temp_board.get_all_possible_moves(
+                PieceColor.white if not GameManager.is_white_move else PieceColor.black
+            ).values(),
+        )
         piece_type = self.squares[init_square_index].occupying_piece.type
         if piece_type == PieceType.king:
             return target_square_index not in responses
-        
+
         kings_color = (
             PieceColor.white if GameManager.is_white_move else PieceColor.black
         )
@@ -153,57 +249,35 @@ class Board:
 
         return kings_position not in responses
 
-    def get_all_possible_moves(board):
-        legal_square_indexes_global = []
-        piece_color_needed = (
-            PieceColor.white if not GameManager.is_white_move else PieceColor.black
-        )
+    def get_all_possible_moves(board, color):
+        legal_moves_global = {}
+        piece_color_needed = color
         for square_index, square in enumerate(board.squares):
             piece = square.occupying_piece
             if piece is not None and piece.color == piece_color_needed:
-                calculation_function = board.calculation_function_type_of_piece_based[
-                    piece.type
-                ]
-                legal_square_indexes_local = []
-                if piece.type == PieceType.pawn:
-                    legal_square_indexes_local, _ = calculate_pawn_moves(
-                        square_index, board.squares
-                    )
-                else:
-                    legal_square_indexes_local = calculation_function(
-                        square_index, board.squares
-                    )
-                legal_square_indexes_global.extend(legal_square_indexes_local)
-        return legal_square_indexes_global
+                legal_moves_local = board.get_all_possible_piece_moves(
+                    piece, square_index
+                )
+                legal_moves_global.setdefault(square_index, legal_moves_local)
+        return legal_moves_global
 
-    # def is_threatened_square(self, square_index):
-    #     for current_square_index, square in enumerate(self.squares):
-    #         piece_on_current_square = square.occupying_piece
-    #         if piece_on_current_square is not None:
-    #             calculation_function = self.calculation_function_type_of_piece_based[
-    #                 piece_on_current_square.type
-    #             ]
-    #             """ Calculate 'legal' moves of current piece"""
-    #             pseudo_legal_moves = []
-    #             if piece_on_current_square.type == PieceType.pawn:
-    #                 pseudo_legal_moves_to_check, _ = calculation_function(
-    #                     current_square_index, self.squares
-    #                 )
-    #                 for pseudo_legal_move in pseudo_legal_moves_to_check:
-    #                     if pseudo_legal_move % ROWS_AMOUNT != current_square_index % ROWS_AMOUNT:
-    #                         pseudo_legal_moves.append(current_square_index)
-    #             else:
-    #                 pseudo_legal_moves = calculation_function(
-    #                     current_square_index, self.squares
-    #                 )
+    def get_all_possible_piece_moves(board, piece, square_index):
+        calculation_function = board.calculation_function_type_of_piece_based[
+            piece.type
+        ]
+        legal_square_indexes_local = []
+        if piece.type == PieceType.pawn:
+            legal_square_indexes_local, _ = calculate_pawn_moves(
+                square_index, board.squares
+            )
+        else:
+            legal_square_indexes_local = calculation_function(
+                square_index, board.squares
+            )
 
-    #             """ If any piece can move to this square so it's threatened """
-    #             if square_index in pseudo_legal_moves:
-    #                 return True
-    #     return False
+        return legal_square_indexes_local
 
     def highlight_legal_moves(self, screen, init_square_index):
-        print("P", init_square_index)
         square = self.squares[init_square_index]
         pieceType = square.occupying_piece.type
         calculation_function = self.calculation_function_type_of_piece_based[pieceType]
@@ -265,3 +339,4 @@ class Board:
 
         """ And only then pieces """
         self.setup_position(screen, fen)
+        self.find_kings()

@@ -1,4 +1,4 @@
-from enums import PieceColor
+from enums import PieceColor, GameState
 
 
 class GameManager:
@@ -7,6 +7,7 @@ class GameManager:
     is_piece_being_held = False
     is_pawn_promoting = False
     is_castling = False
+    game_state = GameState.playing
 
     @classmethod
     def is_right_color(cls, piece_color):
